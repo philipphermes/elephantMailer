@@ -8,6 +8,8 @@ class Mailer
     private static string $subject;
     private static array $data;
 
+    private static array $attachments;
+
     public const H1 = 1;
     public const H2 = 2;
     public const H3 = 3;
@@ -60,68 +62,60 @@ class Mailer
         self::$data[] = sprintf("</%s>", $listType);
     }
 
-    //TODO still in work!!!
-    private static function addFile(): void
+    /**
+     * @throws \Exception
+     */
+    public static function addFile(string $filename, string $path): void
     {
-        $filename = 'myfile';
-        $path = 'your path goes here';
-        $file = $path . "/" . $filename;
+        $filePath = $path . "/" . $filename;
 
-        $mailto = 'mail@mail.com';
-        $subject = 'Subject';
-        $message = 'My message';
+        $attachment = file_get_contents($filePath);
+        $attachment = chunk_split(base64_encode($attachment));
 
-        $content = file_get_contents($file);
-        $content = chunk_split(base64_encode($content));
-
-        // a random hash will be necessary to send mixed content
-        $separator = md5(time());
-
-        // carriage return type (RFC)
-        $eol = "\r\n";
-
-        // main header (multipart mandatory)
-        $headers = "From: name <test@test.com>" . $eol;
-        $headers .= "MIME-Version: 1.0" . $eol;
-        $headers .= "Content-Type: multipart/mixed; boundary=\"" . $separator . "\"" . $eol;
-        $headers .= "Content-Transfer-Encoding: 7bit" . $eol;
-        $headers .= "This is a MIME encoded message." . $eol;
-
-        // message
-        $body = "--" . $separator . $eol;
-        $body .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
-        $body .= "Content-Transfer-Encoding: 8bit" . $eol;
-        $body .= $message . $eol;
-
-        // attachment
-        $body .= "--" . $separator . $eol;
-        $body .= "Content-Type: application/octet-stream; name=\"" . $filename . "\"" . $eol;
-        $body .= "Content-Transfer-Encoding: base64" . $eol;
-        $body .= "Content-Disposition: attachment" . $eol;
-        $body .= $content . $eol;
-        $body .= "--" . $separator . "--";
-
-        //SEND Mail
-        if (mail($mailto, $subject, $body, $headers)) {
-            echo "mail send ... OK"; // or use booleans here
-        } else {
-            echo "mail send ... ERROR!";
-            print_r( error_get_last() );
+        if (array_key_exists($filename, self::$attachments)) {
+            throw new Exception(sprintf("File: %s already added!", $filename));
         }
+
+        self::$attachments[$filename] = $attachment;
     }
 
     public function sendMail(): bool
     {
         //TODO validate bevor sending
 
-        $headers = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-        $headers .= sprintf("From: %s\r\n". self::$mailFrom);
+        $eol = "\r\n";
 
-        $message = "";
+        // a random hash will be necessary to send mixed content
+        $separator = md5((string)time());
+
+        $headers = sprintf("From: %s%s", self::$mailFrom, $eol);
+        $headers .= "MIME-Version: 1.0" . $eol;
+        $headers .= "Content-Type: multipart/mixed; boundary=\"" . $separator . "\"" . $eol;
+        $headers .= "Content-Transfer-Encoding: 7bit" . $eol;
+        $headers .= "This is a MIME encoded message." . $eol;
+
+        $message = "--" . $separator . $eol;
+        $message .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
+        $message .= "Content-Transfer-Encoding: 8bit" . $eol;
+        $message .= $message . $eol;
 
         foreach (self::$data as $element) {
             $message .= $element;
+        }
+
+        if (empty(self::$attachments)) {
+            $message .= "--" . $separator . "--";
+        } else {
+            $message .= "--" . $separator . $eol;
+
+            foreach (self::$attachments as $filename => $attachment) {
+                $message .= "Content-Type: application/octet-stream; name=\"" . $filename . "\"" . $eol;
+                $message .= "Content-Transfer-Encoding: base64" . $eol;
+                $message .= "Content-Disposition: attachment" . $eol;
+                $message .= $attachment . $eol;
+            }
+
+            $message .= "--" . $separator . "--";
         }
 
         return mail(self::$mailTo, self::$subject, $message, $headers);
