@@ -60,8 +60,20 @@ class Mailer
         self::$data[] = sprintf("</%s>", $listType);
     }
 
-    public function sendMail(): void
+    public function sendMail(): bool
     {
-        //TODO
+        //TODO validate bevor sending
+
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type:text/html;charset=UTF-8\r\n";
+        $headers .= sprintf("From: %s\r\n". self::$mailFrom);
+
+        $message = "";
+
+        foreach (self::$data as $element) {
+            $message .= $element;
+        }
+
+        return mail(self::$mailTo, self::$subject, $message, $headers);
     }
 }
