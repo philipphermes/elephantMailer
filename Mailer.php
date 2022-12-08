@@ -9,6 +9,7 @@ class Mailer
     private static array $data;
 
     private static array $attachments;
+    private static string $style;
 
     public const H1 = 1;
     public const H2 = 2;
@@ -79,6 +80,16 @@ class Mailer
         self::$attachments[$filename] = $attachment;
     }
 
+    /**
+     * @param string $style
+     * @return void
+     * You can load the css contet from a file into this method
+     */
+    public static function addStyle(string $style): void
+    {
+        self::$style = sprintf("<style>%s</style>", $style);
+    }
+
     public function sendMail(): bool
     {
         //TODO validate bevor sending
@@ -94,7 +105,11 @@ class Mailer
         $headers .= "Content-Transfer-Encoding: 7bit" . $eol;
         $headers .= "This is a MIME encoded message." . $eol;
 
-        $message = "--" . $separator . $eol;
+        $message = self::$style;
+
+        $message .= "<body>";
+
+        $message .= "--" . $separator . $eol;
         $message .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
         $message .= "Content-Transfer-Encoding: 8bit" . $eol;
         $message .= $message . $eol;
@@ -117,6 +132,8 @@ class Mailer
 
             $message .= "--" . $separator . "--";
         }
+
+        $message .= "</body>";
 
         return mail(self::$mailTo, self::$subject, $message, $headers);
     }
