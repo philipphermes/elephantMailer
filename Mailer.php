@@ -90,7 +90,7 @@ class Mailer
         self::$style = sprintf("<style>%s</style>", $style);
     }
 
-    public function sendMail(): bool
+    public static function sendMail(): bool
     {
         //TODO validate bevor sending
 
